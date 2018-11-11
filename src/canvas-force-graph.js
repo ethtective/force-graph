@@ -4,42 +4,43 @@ import {
   forceManyBody as d3ForceManyBody,
   forceCenter as d3ForceCenter,
   forceRadial as d3ForceRadial
-} from 'd3-force';
+} from "d3-force";
 
-import { default as Bezier } from 'bezier-js';
+import { default as Bezier } from "bezier-js";
 
-import Kapsule from 'kapsule';
-import accessorFn from 'accessor-fn';
-import indexBy from 'index-array-by';
+import Kapsule from "kapsule";
+import accessorFn from "accessor-fn";
+import indexBy from "index-array-by";
 
-import { autoColorObjects } from './color-utils';
-import getDagDepths from './dagDepths';
+import { autoColorObjects } from "./color-utils";
+import getDagDepths from "./dagDepths";
 
 //
 
 const DAG_LEVEL_NODE_RATIO = 2;
 
 export default Kapsule({
-
   props: {
     graphData: {
       default: {
         nodes: [],
         links: []
       },
-      onChange(_, state) { state.engineRunning = false; } // Pause simulation
+      onChange(_, state) {
+        state.engineRunning = false;
+      } // Pause simulation
     },
     dagMode: {}, // td, bu, lr, rl, radialin, radialout
     dagLevelDistance: {},
     nodeRelSize: { default: 4, triggerUpdate: false }, // area per val unit
-    nodeId: { default: 'id' },
-    nodeVal: { default: 'val', triggerUpdate: false },
-    nodeColor: { default: 'color', triggerUpdate: false },
+    nodeId: { default: "id" },
+    nodeVal: { default: "val", triggerUpdate: false },
+    nodeColor: { default: "color", triggerUpdate: false },
     nodeAutoColorBy: {},
     nodeCanvasObject: { triggerUpdate: false },
-    linkSource: { default: 'source' },
-    linkTarget: { default: 'target' },
-    linkColor: { default: 'color', triggerUpdate: false },
+    linkSource: { default: "source" },
+    linkTarget: { default: "target" },
+    linkColor: { default: "color", triggerUpdate: false },
     linkAutoColorBy: {},
     linkWidth: { default: 1, triggerUpdate: false },
     linkCurvature: { default: 0, triggerUpdate: false },
@@ -51,9 +52,27 @@ export default Kapsule({
     linkDirectionalParticleWidth: { default: 4, triggerUpdate: false },
     linkDirectionalParticleColor: { triggerUpdate: false },
     globalScale: { default: 1, triggerUpdate: false },
-    d3AlphaDecay: { default: 0.0228, triggerUpdate: false, onChange(alphaDecay, state) { state.forceLayout.alphaDecay(alphaDecay) }},
-    d3AlphaTarget: { default: 0, triggerUpdate: false, onChange(alphaTarget, state) { state.forceLayout.alphaTarget(alphaTarget) }},
-    d3VelocityDecay: { default: 0.4, triggerUpdate: false, onChange(velocityDecay, state) { state.forceLayout.velocityDecay(velocityDecay) } },
+    d3AlphaDecay: {
+      default: 0.0228,
+      triggerUpdate: false,
+      onChange(alphaDecay, state) {
+        state.forceLayout.alphaDecay(alphaDecay);
+      }
+    },
+    d3AlphaTarget: {
+      default: 0,
+      triggerUpdate: false,
+      onChange(alphaTarget, state) {
+        state.forceLayout.alphaTarget(alphaTarget);
+      }
+    },
+    d3VelocityDecay: {
+      default: 0.4,
+      triggerUpdate: false,
+      onChange(velocityDecay, state) {
+        state.forceLayout.velocityDecay(velocityDecay);
+      }
+    },
     warmupTicks: { default: 0, triggerUpdate: false }, // how many times to tick the force engine at init before starting to render
     cooldownTicks: { default: Infinity, triggerUpdate: false },
     cooldownTime: { default: 15000, triggerUpdate: false }, // ms
@@ -93,7 +112,10 @@ export default Kapsule({
 
       function layoutTick() {
         if (state.engineRunning) {
-          if (++state.cntTicks > state.cooldownTicks || (new Date()) - state.startTickTime > state.cooldownTime) {
+          if (
+            ++state.cntTicks > state.cooldownTicks ||
+            new Date() - state.startTickTime > state.cooldownTime
+          ) {
             state.engineRunning = false; // Stop ticking graph
             state.onEngineStop();
           } else {
@@ -120,14 +142,23 @@ export default Kapsule({
           }
 
           // Draw wider nodes by 1px on shadow canvas for more precise hovering (due to boundary anti-aliasing)
-          const r = Math.sqrt(Math.max(0, getVal(node) || 1)) * state.nodeRelSize + padAmount;
+          const r =
+            Math.sqrt(Math.max(0, getVal(node) || 1)) * state.nodeRelSize +
+            padAmount;
 
           ctx.beginPath();
           ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
-          ctx.fillStyle = getColor(node) || 'rgba(31, 120, 180, 0.92)';
+          ctx.fillStyle = getColor(node) || "rgba(31, 120, 180, 0.92)";
           ctx.fill();
         });
         ctx.restore();
+      }
+
+      function hex2rgb(hex) {
+        let r = parseInt(hex.substr(1, 2), 16);
+        let g = parseInt(hex.substr(3, 2), 16);
+        let b = parseInt(hex.substr(5, 2), 16);
+        return { r: r, g: g, b: b };
       }
 
       function paintLinks() {
@@ -142,10 +173,14 @@ export default Kapsule({
         ctx.save();
 
         // Bundle strokes per unique color/width for performance optimization
-        const linksPerColor = indexBy(state.graphData.links, [getColor, getWidth]);
+        const linksPerColor = indexBy(state.graphData.links, [
+          getColor,
+          getWidth
+        ]);
 
         Object.entries(linksPerColor).forEach(([color, linksPerWidth]) => {
-          const lineColor = !color || color === 'undefined' ? 'rgba(0,0,0,0.15)' : color;
+          const lineColor =
+            !color || color === "undefined" ? "rgba(0,0,0,0.15)" : color;
           Object.entries(linksPerWidth).forEach(([width, links]) => {
             const lineWidth = (width || 1) / state.globalScale + padAmount;
 
@@ -153,42 +188,83 @@ export default Kapsule({
             links.forEach(link => {
               const start = link.source;
               const end = link.target;
-              if (!start.hasOwnProperty('x') || !end.hasOwnProperty('x')) return; // skip invalid link
-
+              if (!start.hasOwnProperty("x") || !end.hasOwnProperty("x"))
+                return; // skip invalid link
+              if (
+                isNaN(start.x) ||
+                isNaN(start.y) ||
+                isNaN(end.x) ||
+                isNaN(end.y)
+              )
+                return;
+              if (link.gradientCache.moved()) {
+                let rgb = hex2rgb(lineColor);
+                let gradient = ctx.createLinearGradient(
+                  start.x,
+                  start.y,
+                  end.x,
+                  end.y
+                );
+                gradient.addColorStop(
+                  0.1,
+                  `rgba(${rgb.r},${rgb.g},${rgb.b},0.1)`
+                );
+                gradient.addColorStop(0.6, lineColor);
+                gradient.addColorStop(0.81, lineColor);
+                gradient.addColorStop(
+                  0.91,
+                  `rgba(${rgb.r},${rgb.g},${rgb.b},0.4)`
+                );
+                gradient.addColorStop(
+                  0.95,
+                  `rgba(${rgb.r},${rgb.g},${rgb.b},0.1)`
+                );
+                link.gradientCache.gradient = gradient;
+                link.gradientCache.start = start;
+                link.gradientCache.end = end;
+              }
               const curvature = getCurvature(link);
 
               ctx.moveTo(start.x, start.y);
 
-              if (!curvature) { // Straight line
+              if (!curvature) {
+                // Straight line
                 ctx.lineTo(end.x, end.y);
                 link.__controlPoints = null;
                 return;
               }
 
-              const l = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)); // line length
+              const l = Math.sqrt(
+                Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)
+              ); // line length
 
               if (l > 0) {
                 const a = Math.atan2(end.y - start.y, end.x - start.x); // line angle
                 const d = l * curvature; // control point distance
 
-                const cp = { // control point
+                const cp = {
+                  // control point
                   x: (start.x + end.x) / 2 + d * Math.cos(a - Math.PI / 2),
                   y: (start.y + end.y) / 2 + d * Math.sin(a - Math.PI / 2)
                 };
                 ctx.quadraticCurveTo(cp.x, cp.y, end.x, end.y);
 
                 link.__controlPoints = [cp.x, cp.y];
-              } else { // Same point, draw a loop
+              } else {
+                // Same point, draw a loop
                 const d = curvature * 70;
                 const cps = [end.x, end.y - d, end.x + d, end.y];
                 ctx.bezierCurveTo(...cps, end.x, end.y);
 
                 link.__controlPoints = cps;
               }
+              ctx.strokeStyle =
+                state.isShadow || (start.marked && end.marked)
+                  ? lineColor
+                  : link.gradientCache.gradient;
+              ctx.lineWidth = lineWidth;
+              ctx.stroke();
             });
-            ctx.strokeStyle = lineColor;
-            ctx.lineWidth = lineWidth;
-            ctx.stroke();
           });
         });
 
@@ -197,11 +273,13 @@ export default Kapsule({
 
       function paintArrows() {
         const ARROW_WH_RATIO = 1.6;
-        const ARROW_VLEN_RATIO = 0.2;
+        const ARROW_VLEN_RATIO = 0.1;
 
         const getLength = accessorFn(state.linkDirectionalArrowLength);
         const getRelPos = accessorFn(state.linkDirectionalArrowRelPos);
-        const getColor = accessorFn(state.linkDirectionalArrowColor || state.linkColor);
+        const getColor = accessorFn(
+          state.linkDirectionalArrowColor || state.linkColor
+        );
         const getNodeVal = accessorFn(state.nodeVal);
         const ctx = state.ctx;
 
@@ -210,49 +288,102 @@ export default Kapsule({
           const arrowLength = getLength(link);
           if (!arrowLength || arrowLength < 0) return;
 
+          // just block it, fuck it
+          if (!link.isSuccess()) return;
+
           const start = link.source;
           const end = link.target;
 
-          if (!start.hasOwnProperty('x') || !end.hasOwnProperty('x')) return; // skip invalid link
+          if (!start.hasOwnProperty("x") || !end.hasOwnProperty("x")) return; // skip invalid link
 
-          const startR = Math.sqrt(Math.max(0, getNodeVal(start) || 1)) * state.nodeRelSize;
-          const endR = Math.sqrt(Math.max(0, getNodeVal(end) || 1)) * state.nodeRelSize;
+          const startR =
+            Math.sqrt(Math.max(0, getNodeVal(start) || 1)) * state.nodeRelSize;
+          const endR =
+            Math.sqrt(Math.max(0, getNodeVal(end) || 1)) * state.nodeRelSize;
 
           const arrowRelPos = Math.min(1, Math.max(0, getRelPos(link)));
-          const arrowColor = getColor(link) || 'rgba(0,0,0,0.28)';
+          const arrowColor = getColor(link) || "rgba(0,0,0,0.28)";
           const arrowHalfWidth = arrowLength / ARROW_WH_RATIO / 2;
 
           // Construct bezier for curved lines
-          const bzLine = link.__controlPoints && new Bezier(start.x, start.y, ...link.__controlPoints, end.x, end.y);
+          const bzLine =
+            link.__controlPoints &&
+            new Bezier(start.x, start.y, ...link.__controlPoints, end.x, end.y);
 
           const getCoordsAlongLine = bzLine
-              ? t => bzLine.get(t) // get position along bezier line
-              : t => ({            // straight line: interpolate linearly
+            ? t => bzLine.get(t) // get position along bezier line
+            : t => ({
+                // straight line: interpolate linearly
                 x: start.x + (end.x - start.x) * t || 0,
                 y: start.y + (end.y - start.y) * t || 0
               });
 
           const lineLen = bzLine
             ? bzLine.length()
-            : Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2));
+            : Math.sqrt(
+                Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)
+              );
 
-          const posAlongLine = startR + arrowLength + (lineLen - startR - endR - arrowLength) * arrowRelPos;
+          const posAlongLine =
+            startR +
+            arrowLength +
+            (lineLen - startR - endR - arrowLength) * arrowRelPos;
 
           const arrowHead = getCoordsAlongLine(posAlongLine / lineLen);
-          const arrowTail = getCoordsAlongLine((posAlongLine - arrowLength) / lineLen);
-          const arrowTailVertex = getCoordsAlongLine((posAlongLine - arrowLength * (1 - ARROW_VLEN_RATIO)) / lineLen);
+          const arrowTail = getCoordsAlongLine(
+            (posAlongLine - arrowLength) / lineLen
+          );
+          const arrowTailVertex = getCoordsAlongLine(
+            (posAlongLine - arrowLength * (1 - ARROW_VLEN_RATIO)) / lineLen
+          );
 
-          const arrowTailAngle = Math.atan2(arrowHead.y - arrowTail.y, arrowHead.x - arrowTail.x) - Math.PI / 2;
+          const arrowTailAngle =
+            Math.atan2(arrowHead.y - arrowTail.y, arrowHead.x - arrowTail.x) -
+            Math.PI / 2;
+
+          ctx.lineDashOffset = 1;
+          ctx.setLineDash([]);
+          ctx.lineWidth = 0.6;
+          ctx.lineJoin = "round";
+          ctx.beginPath();
+          ctx.moveTo(arrowHead.x, arrowHead.y);
+          ctx.lineTo(
+            arrowTail.x + arrowHalfWidth * Math.cos(arrowTailAngle),
+            arrowTail.y + arrowHalfWidth * Math.sin(arrowTailAngle)
+          );
+          ctx.lineTo(arrowTailVertex.x, arrowTailVertex.y);
+          ctx.lineTo(
+            arrowTail.x - arrowHalfWidth * Math.cos(arrowTailAngle),
+            arrowTail.y - arrowHalfWidth * Math.sin(arrowTailAngle)
+          );
+          ctx.lineTo(arrowHead.x, arrowHead.y);
+          ctx.closePath();
+          if (link.arrowPosition < 1) {
+            ctx.shadowColor = "rgba(200,200,200,0.23)";
+            ctx.shadowOffsetX = 4 * link.arrowPosition;
+            ctx.shadowOffsetY = 4 * link.arrowPosition;
+            ctx.shadowBlur = 12;
+          }
+          ctx.fillStyle = "#FEFEFE";
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.shadowColor = "rgba(0,0,0,0)";
+          ctx.strokeStyle = "#FEFEFE";
+          ctx.stroke();
+          ctx.fillStyle = link.arrowBodyColor + link.opacity.toString(16);
+          ctx.fill();
+          ctx.lineWidth = 0.15;
+          ctx.strokeStyle = arrowColor;
+          ctx.stroke();
 
           ctx.beginPath();
-
+          ctx.lineWidth = 0.12;
+          ctx.setLineDash([0.2, 0.4]);
+          ctx.lineDashOffset = 1;
           ctx.moveTo(arrowHead.x, arrowHead.y);
-          ctx.lineTo(arrowTail.x + arrowHalfWidth * Math.cos(arrowTailAngle), arrowTail.y + arrowHalfWidth * Math.sin(arrowTailAngle));
           ctx.lineTo(arrowTailVertex.x, arrowTailVertex.y);
-          ctx.lineTo(arrowTail.x - arrowHalfWidth * Math.cos(arrowTailAngle), arrowTail.y - arrowHalfWidth * Math.sin(arrowTailAngle));
-
-          ctx.fillStyle = arrowColor;
-          ctx.fill();
+          ctx.closePath();
+          ctx.stroke();
         });
         ctx.restore();
       }
@@ -261,7 +392,9 @@ export default Kapsule({
         const getNumPhotons = accessorFn(state.linkDirectionalParticles);
         const getSpeed = accessorFn(state.linkDirectionalParticleSpeed);
         const getDiameter = accessorFn(state.linkDirectionalParticleWidth);
-        const getColor = accessorFn(state.linkDirectionalParticleColor || state.linkColor);
+        const getColor = accessorFn(
+          state.linkDirectionalParticleColor || state.linkColor
+        );
         const ctx = state.ctx;
 
         ctx.save();
@@ -271,30 +404,40 @@ export default Kapsule({
           const start = link.source;
           const end = link.target;
 
-          if (!start.hasOwnProperty('x') || !end.hasOwnProperty('x')) return; // skip invalid link
+          if (!start.hasOwnProperty("x") || !end.hasOwnProperty("x")) return; // skip invalid link
 
           const particleSpeed = getSpeed(link);
           const photons = link.__photons || [];
-          const photonR = Math.max(0, getDiameter(link) / 2) / Math.sqrt(state.globalScale);
-          const photonColor = getColor(link) || 'rgba(0,0,0,0.28)';
+          const photonR =
+            Math.max(0, getDiameter(link) / 2) / Math.sqrt(state.globalScale);
+          const photonColor = getColor(link) || "rgba(0,0,0,0.28)";
 
           ctx.fillStyle = photonColor;
 
           // Construct bezier for curved lines
           const bzLine = link.__controlPoints
-            ? new Bezier(start.x, start.y, ...link.__controlPoints, end.x, end.y)
+            ? new Bezier(
+                start.x,
+                start.y,
+                ...link.__controlPoints,
+                end.x,
+                end.y
+              )
             : null;
 
           photons.forEach((photon, idx) => {
-            const photonPosRatio = photon.__progressRatio =
-              ((photon.__progressRatio || (idx / photons.length)) + particleSpeed) % 1;
+            const photonPosRatio = (photon.__progressRatio =
+              ((photon.__progressRatio || idx / photons.length) +
+                particleSpeed) %
+              1);
 
             const coords = bzLine
-              ? bzLine.get(photonPosRatio)  // get position along bezier line
-              : { // straight line: interpolate linearly
-                x: start.x + (end.x - start.x) * photonPosRatio || 0,
-                y: start.y + (end.y - start.y) * photonPosRatio || 0
-              };
+              ? bzLine.get(photonPosRatio) // get position along bezier line
+              : {
+                  // straight line: interpolate linearly
+                  x: start.x + (end.x - start.x) * photonPosRatio || 0,
+                  y: start.y + (end.y - start.y) * photonPosRatio || 0
+                };
 
             ctx.beginPath();
             ctx.arc(coords.x, coords.y, photonR, 0, 2 * Math.PI, false);
@@ -308,10 +451,10 @@ export default Kapsule({
 
   stateInit: () => ({
     forceLayout: d3ForceSimulation()
-      .force('link', d3ForceLink())
-      .force('charge', d3ForceManyBody())
-      .force('center', d3ForceCenter())
-      .force('dagRadial', null)
+      .force("link", d3ForceLink())
+      .force("charge", d3ForceManyBody())
+      .force("center", d3ForceCenter())
+      .force("dagRadial", null)
       .stop(),
     engineRunning: false
   }),
@@ -327,11 +470,19 @@ export default Kapsule({
 
     if (state.nodeAutoColorBy !== null) {
       // Auto add color to uncolored nodes
-      autoColorObjects(state.graphData.nodes, accessorFn(state.nodeAutoColorBy), state.nodeColor);
+      autoColorObjects(
+        state.graphData.nodes,
+        accessorFn(state.nodeAutoColorBy),
+        state.nodeColor
+      );
     }
     if (state.linkAutoColorBy !== null) {
       // Auto add color to uncolored links
-      autoColorObjects(state.graphData.links, accessorFn(state.linkAutoColorBy), state.linkColor);
+      autoColorObjects(
+        state.graphData.links,
+        accessorFn(state.linkAutoColorBy),
+        state.linkColor
+      );
     }
 
     // parse links
@@ -356,48 +507,65 @@ export default Kapsule({
       .nodes(state.graphData.nodes);
 
     // add links (if link force is still active)
-    const linkForce = state.forceLayout.force('link');
+    const linkForce = state.forceLayout.force("link");
     if (linkForce) {
-      linkForce
-        .id(d => d[state.nodeId])
-        .links(state.graphData.links);
+      linkForce.id(d => d[state.nodeId]).links(state.graphData.links);
     }
 
     // setup dag force constraints
-    const nodeDepths = state.dagMode && getDagDepths(state.graphData, node => node[state.nodeId]);
+    const nodeDepths =
+      state.dagMode &&
+      getDagDepths(state.graphData, node => node[state.nodeId]);
     const maxDepth = Math.max(...Object.values(nodeDepths || []));
-    const dagLevelDistance = state.dagLevelDistance || (
-        state.graphData.nodes.length / (maxDepth || 1) * DAG_LEVEL_NODE_RATIO
-        * (['radialin', 'radialout'].indexOf(state.dagMode) !== -1 ? 0.7 : 1)
-      );
+    const dagLevelDistance =
+      state.dagLevelDistance ||
+      state.graphData.nodes.length /
+        (maxDepth || 1) *
+        DAG_LEVEL_NODE_RATIO *
+        (["radialin", "radialout"].indexOf(state.dagMode) !== -1 ? 0.7 : 1);
 
     // Fix nodes to x,y for dag mode
     if (state.dagMode) {
-      const getFFn = (fix, invert) => node => !fix
-        ? undefined
-        : (nodeDepths[node[state.nodeId]] - maxDepth / 2) * dagLevelDistance * (invert ? -1 : 1);
+      const getFFn = (fix, invert) => node =>
+        !fix
+          ? undefined
+          : (nodeDepths[node[state.nodeId]] - maxDepth / 2) *
+            dagLevelDistance *
+            (invert ? -1 : 1);
 
-      const fxFn = getFFn(['lr', 'rl'].indexOf(state.dagMode) !== -1, state.dagMode === 'rl');
-      const fyFn = getFFn(['td', 'bu'].indexOf(state.dagMode) !== -1, state.dagMode === 'bu');
+      const fxFn = getFFn(
+        ["lr", "rl"].indexOf(state.dagMode) !== -1,
+        state.dagMode === "rl"
+      );
+      const fyFn = getFFn(
+        ["td", "bu"].indexOf(state.dagMode) !== -1,
+        state.dagMode === "bu"
+      );
 
       state.graphData.nodes.forEach(node => {
         node.fx = fxFn(node);
         node.fy = fyFn(node);
       });
-    };
+    }
 
     // Use radial force for radial dags
-    state.forceLayout.force('dagRadial',
-      ['radialin', 'radialout'].indexOf(state.dagMode) !== -1
+    state.forceLayout.force(
+      "dagRadial",
+      ["radialin", "radialout"].indexOf(state.dagMode) !== -1
         ? d3ForceRadial(node => {
-        const nodeDepth = nodeDepths[node[state.nodeId]];
-        return (state.dagMode === 'radialin' ? maxDepth - nodeDepth : nodeDepth) * dagLevelDistance;
-      })
-        .strength(1)
+            const nodeDepth = nodeDepths[node[state.nodeId]];
+            return (
+              (state.dagMode === "radialin"
+                ? maxDepth - nodeDepth
+                : nodeDepth) * dagLevelDistance
+            );
+          }).strength(1)
         : null
     );
 
-    for (let i=0; i<state.warmupTicks; i++) { state.forceLayout.tick(); } // Initial ticks before starting to render
+    for (let i = 0; i < state.warmupTicks; i++) {
+      state.forceLayout.tick();
+    } // Initial ticks before starting to render
 
     this.resetCountdown();
     state.onFinishLoading();
