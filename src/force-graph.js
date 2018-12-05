@@ -47,6 +47,7 @@ const linkedProps = Object.assign(
     'nodeVal',
     'linkSource',
     'linkTarget',
+    'linkVisibility',
     'linkCurvature'
   ].map(p => ({ [p]: bindBoth.linkProp(p)}))
 );
@@ -147,6 +148,10 @@ export default Kapsule({
     ...linkedProps
   },
 
+  aliases: { // Prop names supported for backwards compatibility
+    stopAnimation: 'pauseAnimation'
+  },
+
   methods: {
     centerAt: function(state, x, y, transitionDuration) {
       if (!state.canvas) return null; // no canvas yet
@@ -217,9 +222,16 @@ export default Kapsule({
         state.zoom.scaleTo(state.zoom.__baseElem, k);
       }
     },
-    stopAnimation: function(state) {
+    pauseAnimation: function(state) {
       if (state.animationFrameRequestId) {
         cancelAnimationFrame(state.animationFrameRequestId);
+        state.animationFrameRequestId = null;
+      }
+      return this;
+    },
+    resumeAnimation: function(state) {
+      if (!state.animationFrameRequestId) {
+        this._animationCycle();
       }
       return this;
     },
@@ -395,7 +407,7 @@ export default Kapsule({
     }, HOVER_CANVAS_THROTTLE_DELAY);
 
     // Kick-off renderer
-    (function animate() { // IIFE
+    (this._animationCycle = function animate() { // IIFE
       if (state.enablePointerInteraction) {
         // Update tooltip and trigger onHover events
 

@@ -4,7 +4,7 @@ import {
   forceManyBody as d3ForceManyBody,
   forceCenter as d3ForceCenter,
   forceRadial as d3ForceRadial
-} from "d3-force";
+} from "d3-force-3d";
 
 import { default as Bezier } from "bezier-js";
 
@@ -40,6 +40,7 @@ export default Kapsule({
     nodeCanvasObject: { triggerUpdate: false },
     linkSource: { default: "source" },
     linkTarget: { default: "target" },
+    linkVisibility: { default: true, triggerUpdate: false },
     linkColor: { default: "color", triggerUpdate: false },
     linkAutoColorBy: {},
     linkWidth: { default: 1, triggerUpdate: false },
@@ -162,6 +163,7 @@ export default Kapsule({
       }
 
       function paintLinks() {
+        const getVisibility = accessorFn(state.linkVisibility);
         const getColor = accessorFn(state.linkColor);
         const getWidth = accessorFn(state.linkWidth);
         const getCurvature = accessorFn(state.linkCurvature);
@@ -172,11 +174,10 @@ export default Kapsule({
 
         ctx.save();
 
+        const visibleLinks = state.graphData.links.filter(getVisibility);
+
         // Bundle strokes per unique color/width for performance optimization
-        const linksPerColor = indexBy(state.graphData.links, [
-          getColor,
-          getWidth
-        ]);
+        const linksPerColor = indexBy(visibleLinks, [getColor, getWidth]);
 
         Object.entries(linksPerColor).forEach(([color, linksPerWidth]) => {
           const lineColor =
@@ -277,6 +278,7 @@ export default Kapsule({
 
         const getLength = accessorFn(state.linkDirectionalArrowLength);
         const getRelPos = accessorFn(state.linkDirectionalArrowRelPos);
+        const getVisibility = accessorFn(state.linkVisibility);
         const getColor = accessorFn(
           state.linkDirectionalArrowColor || state.linkColor
         );
@@ -284,7 +286,7 @@ export default Kapsule({
         const ctx = state.ctx;
 
         ctx.save();
-        state.graphData.links.forEach(link => {
+        state.graphData.links.filter(getVisibility).forEach(link => {
           const arrowLength = getLength(link);
           if (!arrowLength || arrowLength < 0) return;
 
@@ -392,13 +394,14 @@ export default Kapsule({
         const getNumPhotons = accessorFn(state.linkDirectionalParticles);
         const getSpeed = accessorFn(state.linkDirectionalParticleSpeed);
         const getDiameter = accessorFn(state.linkDirectionalParticleWidth);
+        const getVisibility = accessorFn(state.linkVisibility);
         const getColor = accessorFn(
           state.linkDirectionalParticleColor || state.linkColor
         );
         const ctx = state.ctx;
 
         ctx.save();
-        state.graphData.links.forEach(link => {
+        state.graphData.links.filter(getVisibility).forEach(link => {
           if (!getNumPhotons(link)) return;
 
           const start = link.source;
@@ -519,8 +522,7 @@ export default Kapsule({
     const maxDepth = Math.max(...Object.values(nodeDepths || []));
     const dagLevelDistance =
       state.dagLevelDistance ||
-      state.graphData.nodes.length /
-        (maxDepth || 1) *
+      (state.graphData.nodes.length / (maxDepth || 1)) *
         DAG_LEVEL_NODE_RATIO *
         (["radialin", "radialout"].indexOf(state.dagMode) !== -1 ? 0.7 : 1);
 
